@@ -1,0 +1,82 @@
+version: "3.2"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.1.4
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka_broker_1:
+    image: confluentinc/cp-kafka:7.1.4
+    container_name: kafka_broker_1
+    ports:
+      - "8097:8097"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:8097,INTERNAL://kafka_broker_1:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  kafka_broker_2:
+    image: confluentinc/cp-kafka:7.1.4
+    container_name: kafka_broker_2
+    ports:
+      - "8098:8098"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:8098,INTERNAL://kafka_broker_2:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  kafka_broker_3:
+    image: confluentinc/cp-kafka:7.1.4
+    container_name: kafka_broker_3
+    ports:
+      - "8099:8099"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:8099,INTERNAL://kafka_broker_3:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.1.4
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - "kafka_broker_1"
+      - "kafka_broker_2"
+      - "kafka_broker_3"
+    ports:
+      - "8081:8081"
+    volumes:
+      - ${PWD}/:/etc/tutorial/
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka_broker_1:9092,kafka_broker_2:9092,kafka_broker_3:9092"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
+
+  kafdrop:
+    image: docker.artifactory-dogen.group.echonet/obsidiandynamics/kafdrop
+    container_name: kafdrop
+    restart: "no"
+    depends_on:
+      - "kafka_broker_1"
+      - "kafka_broker_2"
+      - "kafka_broker_3"
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka_broker_1:9092,kafka_broker_2:9092,kafka_broker_3:9092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+      SCHEMAREGISTRY_CONNECT: "http://localhost:8081"
